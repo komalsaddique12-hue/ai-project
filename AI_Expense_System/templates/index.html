@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinTrack AI — Expense Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0a0e1a;
+    --slate: #1e293b;
+    --gray: #64748b;
+    --gray-light: #94a3b8;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --bg: #ffffff;
+    --bg-subtle: #fafbfc;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-light: #eef2ff;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-subtle);
+    color: var(--navy);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Subtle grid pattern */
+    background-image:
+      linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top nav — minimal */
+  .topnav {
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    animation: navFade 0.5s ease;
+  }
+  @keyframes navFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.2px;
+    color: var(--navy);
+  }
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: var(--navy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: -0.5px;
+  }
+
+  .topnav-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--gray);
+    font-weight: 500;
+  }
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    position: relative;
+  }
+  .live-dot::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.25);
+    animation: livePulse 2s ease-in-out infinite;
+  }
+  @keyframes livePulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0; }
+  }
+
+  /* Main */
+  .main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+  }
+
+  .shell {
+    width: 100%;
+    max-width: 520px;
+    animation: shellEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes shellEnter {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Header */
+  .head {
+    margin-bottom: 32px;
+  }
+  .head h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.8px;
+    color: var(--navy);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+  .head p {
+    color: var(--gray);
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 440px;
+  }
+
+  /* Card */
+  .panel {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 8px 24px -8px rgba(15, 23, 42, 0.06);
+  }
+
+  /* Fields */
+  .field { margin-bottom: 24px; }
+  .field:last-of-type { margin-bottom: 0; }
+
+  .field-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate);
+    margin-bottom: 8px;
+    letter-spacing: -0.1px;
+  }
+  .field-hint {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray-light);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .input-wrap { position: relative; }
+  .input-prefix {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray);
+    font-weight: 500;
+    font-size: 14px;
+    pointer-events: none;
+    transition: color 0.15s;
+  }
+
+  input[type="number"],
+  input[type="text"] {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 9px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    color: var(--navy);
+    background: #ffffff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    letter-spacing: -0.1px;
+  }
+  input.has-prefix { padding-left: 42px; }
+  input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+  input-wrap:focus-within .input-prefix { color: var(--accent); }
+  input::placeholder { color: var(--gray-light); font-weight: 400; }
+
+  /* Expense rows */
+  .expense-list { display: flex; flex-direction: column; gap: 8px; }
+  .expense-row {
+    display: grid;
+    grid-template-columns: 1fr 130px 36px;
+    gap: 8px;
+    align-items: center;
+    animation: rowEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes rowEnter {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .expense-row input { padding: 10px 12px; font-size: 13px; }
+  .expense-row input.has-prefix { padding-left: 34px; }
+  .expense-row .input-prefix { font-size: 12px; left: 12px; }
+
+  .row-remove {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-strong);
+    background: #ffffff;
+    border-radius: 9px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--gray);
+    transition: all 0.15s;
+    padding: 0;
+    font-family: inherit;
+  }
+  .row-remove:hover {
+    background: var(--red-bg);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .add-row {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    background: transparent;
+    border: 1px dashed var(--border-strong);
+    border-radius: 9px;
+    color: var(--gray);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    letter-spacing: -0.1px;
+  }
+  .add-row:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+    border-style: solid;
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  /* Primary button */
+  .btn-submit {
+    width: 100%;
+    padding: 13px 20px;
+    background: var(--navy);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: -0.1px;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-submit:hover {
+    background: #1a2540;
+    box-shadow: 0 6px 16px -4px rgba(10, 14, 26, 0.25);
+  }
+  .btn-submit:active { transform: translateY(1px); }
+  .btn-submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .btn-submit .arrow {
+    transition: transform 0.2s;
+    font-size: 15px;
+    opacity: 0.8;
+  }
+  .btn-submit:hover .arrow { transform: translateX(3px); }
+
+  /* Trust footer */
+  .trust {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--gray);
+    font-weight: 500;
+  }
+  .trust svg {
+    width: 14px;
+    height: 14px;
+    color: var(--gray-light);
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 20px;
+    background: var(--navy);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 9999;
+    box-shadow: 0 12px 32px -8px rgba(10, 14, 26, 0.35);
+    animation: toastSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 90vw;
+  }
+  .toast.error { background: var(--red); }
+  @keyframes toastSlide {
+    from { opacity: 0; transform: translate(-50%, -12px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
+  /* Exit animation */
+  body.exiting .main { animation: exitFade 0.3s forwards; }
+  @keyframes exitFade {
+    to { opacity: 0; transform: translateY(-8px); }
+  }
+
+  /* Responsive */
+  @media (max-width: 560px) {
+    .topnav { padding: 16px 20px; }
+    .main { padding: 32px 16px; }
+    .panel { padding: 24px 20px; }
+    .head h1 { font-size: 24px; }
+    .expense-row { grid-template-columns: 1fr 100px 36px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top nav -->
+<nav class="topnav">
+  <div class="logo">
+    <div class="logo-mark">FT</div>
+    FinTrack AI
+  </div>
+  <div class="topnav-meta">
+    <span class="live-dot"></span>
+    System online
+  </div>
+</nav>
+
+<!-- Main content -->
+<div class="main">
+  <div class="shell">
+
+    <!-- Header -->
+    <div class="head">
+      <h1>Analyze your expenses</h1>
+      <p>Enter your monthly salary and expenses. Our AI will categorize spending, generate a financial health score, and provide personalized savings recommendations.</p>
+    </div>
+
+    <!-- Form panel -->
+    <div class="panel">
+
+      <!-- Salary -->
+      <div class="field">
+        <label class="field-label" for="salary">
+          <span>Monthly salary</span>
+          <span class="field-hint">Required</span>
+        </label>
+        <div class="input-wrap">
+          <span class="input-prefix">Rs</span>
+          <input type="number" id="salary" class="has-prefix" placeholder="60,000" autofocus />
+        </div>
+      </div>
+
+      <!-- Expenses -->
+      <div class="field">
+        <label class="field-label">
+          <span>Monthly expenses</span>
+          <span class="field-hint" id="expenseCount">0 items</span>
+        </label>
+        <div class="expense-list" id="expenseList"></div>
+        <button class="add-row" onclick="addExpense()">+ Add expense</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <button class="btn-submit" id="analyzeBtn" onclick="analyze()">
+        <span>Analyze with AI</span>
+        <span class="arrow">→</span>
+      </button>
+
+    </div>
+
+    <!-- Trust footer -->
+    <div class="trust">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+      Your data stays on your device
+    </div>
+
+  </div>
+</div>
+
+<script>
+  window.onload = () => {
+    for (let i = 0; i < 3; i++) addExpense();
+  };
+
+  function addExpense(name = "", amount = "") {
+    const list = document.getElementById("expenseList");
+    const row = document.createElement("div");
+    row.className = "expense-row";
+    row.innerHTML = `
+      <input type="text" placeholder="e.g., Rent" class="exp-name" value="${name}" />
+      <div class="input-wrap">
+        <span class="input-prefix">Rs</span>
+        <input type="number" placeholder="Amount" class="exp-amount has-prefix" value="${amount}" />
+      </div>
+      <button class="row-remove" type="button" title="Remove">✕</button>
+    `;
+    row.querySelector(".row-remove").addEventListener("click", () => {
+      row.style.animation = "none";
+      row.style.opacity = "0";
+      row.style.transform = "translateX(-8px)";
+      row.style.transition = "all 0.2s";
+      setTimeout(() => {
+        row.remove();
+        updateCount();
+      }, 200);
+    });
+    list.appendChild(row);
+    updateCount();
+  }
+
+  function updateCount() {
+    const count = document.querySelectorAll(".expense-row").length;
+    document.getElementById("expenseCount").textContent =
+      count + (count === 1 ? " item" : " items");
+  }
+
+  function showToast(msg, type = "error") {
+    const existing = document.querySelector(".toast");
+    if (existing) existing.remove();
+
+    const t = document.createElement("div");
+    t.className = "toast" + (type === "error" ? " error" : "");
+    t.innerHTML = `<span>${msg}</span>`;
+    document.body.appendChild(t);
+    setTimeout(() => {
+      t.style.transition = "opacity 0.25s, transform 0.25s";
+      t.style.opacity = "0";
+      t.style.transform = "translate(-50%, -8px)";
+      setTimeout(() => t.remove(), 250);
+    }, 2800);
+  }
+
+  async function analyze() {
+    const salary = parseFloat(document.getElementById("salary").value);
+    if (!salary || salary <= 0) {
+      showToast("Please enter a valid monthly salary");
+      return;
+    }
+
+    const rows = document.querySelectorAll(".expense-row");
+    const expenses = [];
+
+    rows.forEach(row => {
+      const n = row.querySelector(".exp-name").value.trim();
+      const a = parseFloat(row.querySelector(".exp-amount").value);
+      if (n && a > 0) expenses.push({ name: n, amount: a });
+    });
+
+    if (expenses.length === 0) {
+      showToast("Please add at least one expense");
+      return;
+    }
+
+    const btn = document.getElementById("analyzeBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span>Analyzing…</span>';
+
+    try {
+      const res = await fetch("/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ salary, expenses })
+      });
+
+      if (!res.ok) throw new Error("Server error " + res.status);
+      const data = await res.json();
+
+      sessionStorage.setItem("result", JSON.stringify(data));
+
+      document.body.classList.add("exiting");
+      setTimeout(() => window.location.href = "/analysis", 280);
+
+    } catch (err) {
+      showToast("Something went wrong. Please try again.");
+      btn.disabled = false;
+      btn.innerHTML = '<span>Analyze with AI</span><span class="arrow">→</span>';
+    }
+  }
+
+  // Enter key to submit
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.target.tagName === "INPUT")) {
+      const inputs = document.querySelectorAll(".exp-name, .exp-amount");
+      const last = inputs[inputs.length - 1];
+      if (e.target === last) {
+        e.preventDefault();
+        analyze();
+      }
+    }
+  });
+</script>
+</body>
+</html>

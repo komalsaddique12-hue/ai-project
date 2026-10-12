@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinTrack AI — Analysis Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root {
+    --navy: #0a0e1a; --slate: #1e293b; --gray: #64748b;
+    --gray-light: #94a3b8; --border: #e5e7eb; --border-strong: #d1d5db;
+    --bg: #ffffff; --bg-subtle: #fafbfc;
+    --red: #dc2626; --red-bg: #fef2f2;
+    --amber: #f59e0b; --amber-bg: #fffbeb;
+    --green: #10b981; --green-bg: #f0fdf4;
+    --blue: #3b82f6; --blue-bg: #eff6ff;
+    --purple: #8b5cf6; --indigo: #4f46e5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-subtle);
+    color: var(--navy);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background 0.3s, color 0.3s;
+
+    background-image:
+      linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  body.dark {
+    --navy: #f1f5f9; --slate: #cbd5e1; --gray: #94a3b8;
+    --gray-light: #64748b; --border: #334155; --border-strong: #475569;
+    --bg: #1e293b; --bg-subtle: #0f172a;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  }
+  body.dark .card { background: var(--bg); box-shadow: none; }
+  body.dark .data-table th { background: #0f172a; }
+  body.dark .data-table tbody tr:hover td { background: #0f172a; }
+  body.dark .kpi { background: var(--bg); }
+  body.dark .projection-summary { background: #0f172a; }
+
+  /* ============ NAVBAR ============ */
+  .navbar {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  body.dark .navbar { background: rgba(15, 23, 42, 0.85); }
+
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 15px;
+    letter-spacing: -0.2px;
+    color: var(--navy);
+  }
+  .brand-mark {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: var(--navy);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px;
+    letter-spacing: -0.5px;
+  }
+  .brand-divider {
+    width: 1px; height: 16px;
+    background: var(--border-strong);
+    margin: 0 4px;
+  }
+  .brand-sub {
+    font-size: 12px; font-weight: 500;
+    color: var(--gray);
+    letter-spacing: -0.1px;
+  }
+
+  .nav-right { display: flex; align-items: center; gap: 8px; }
+
+  .btn-ghost {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    color: var(--slate);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    text-decoration: none;
+    letter-spacing: -0.1px;
+  }
+  .btn-ghost:hover {
+    border-color: var(--navy);
+    color: var(--navy);
+    background: rgba(15, 23, 42, 0.04);
+  }
+  body.dark .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--navy);
+  }
+
+  /* ============ LAYOUT ============ */
+  .layout { max-width: 920px; margin: 0 auto; padding: 40px 24px; }
+
+  .page-header {
+    margin-bottom: 32px;
+  }
+  .page-header h1 {
+    font-size: 26px; font-weight: 700;
+    letter-spacing: -0.6px; margin-bottom: 6px;
+    color: var(--navy);
+  }
+  .page-header p {
+    color: var(--gray); font-size: 14px;
+    letter-spacing: -0.1px;
+  }
+
+  /* ============ SIMPLE FADE-IN CARDS ============ */
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 8px 24px -12px rgba(15, 23, 42, 0.06);
+    transition: box-shadow 0.2s, opacity 0.5s ease, transform 0.5s ease;
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  .card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .card:hover {
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 12px 32px -12px rgba(15, 23, 42, 0.1);
+  }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 10px;
+    color: var(--navy);
+    letter-spacing: -0.2px;
+  }
+  .card-title-icon {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: var(--blue-bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  body.dark .card-title-icon { background: rgba(79, 70, 229, 0.15); }
+
+  /* ============ KPI ============ */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .kpi {
+    padding: 18px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.4s;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .kpi.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .kpi:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -8px rgba(15, 23, 42, 0.12);
+  }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    border-radius: 12px 0 0 12px;
+  }
+  .kpi.red::before { background: var(--red); }
+  .kpi.amber::before { background: var(--amber); }
+  .kpi.green::before { background: var(--green); }
+  .kpi.blue::before { background: var(--blue); }
+  .kpi.purple::before { background: var(--purple); }
+
+  .kpi-label {
+    font-size: 11px; color: var(--gray); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .kpi-value {
+    font-size: 20px; font-weight: 700;
+    letter-spacing: -0.5px; color: var(--navy);
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-value.negative { color: var(--red); }
+
+  /* ============ TABLE ============ */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    text-align: left; padding: 12px 14px;
+    font-size: 11px; font-weight: 700;
+    color: var(--gray);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table td {
+    padding: 14px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    color: var(--slate);
+    letter-spacing: -0.1px;
+  }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table tbody tr {
+    transition: background 0.15s;
+  }
+  .data-table tbody tr:hover td { background: var(--bg-subtle); }
+  .data-table .amount {
+    font-weight: 600; color: var(--navy);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============ BADGES ============ */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .badge-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .badge.important { background: var(--red-bg); color: var(--red); }
+  .badge.important .badge-dot { background: var(--red); }
+  .badge.less_important { background: var(--amber-bg); color: #b45309; }
+  .badge.less_important .badge-dot { background: var(--amber); }
+  .badge.optional { background: var(--green-bg); color: #047857; }
+  .badge.optional .badge-dot { background: var(--green); }
+  body.dark .badge.important { background: rgba(220, 38, 38, 0.15); }
+  body.dark .badge.less_important { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+  body.dark .badge.optional { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+
+  /* ============ CHART ============ */
+  .chart-container { position: relative; height: 260px; }
+  .chart-container-tall { position: relative; height: 320px; }
+
+  /* ============ ADVICE ============ */
+  .advice-list { list-style: none; }
+  .advice-item {
+    display: flex; gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .advice-item:last-child { border-bottom: none; }
+  .advice-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+  .advice-item.danger .advice-icon { background: var(--red-bg); }
+  .advice-item.warning .advice-icon { background: var(--amber-bg); }
+  .advice-item.success .advice-icon { background: var(--green-bg); }
+  .advice-item.tip .advice-icon { background: var(--blue-bg); }
+  body.dark .advice-item.danger .advice-icon { background: rgba(220, 38, 38, 0.15); }
+  body.dark .advice-item.warning .advice-icon { background: rgba(245, 158, 11, 0.15); }
+  body.dark .advice-item.success .advice-icon { background: rgba(16, 185, 129, 0.15); }
+  body.dark .advice-item.tip .advice-icon { background: rgba(79, 70, 229, 0.15); }
+  .advice-text {
+    font-size: 13px; color: var(--slate);
+    line-height: 1.55; padding-top: 6px;
+    letter-spacing: -0.1px;
+  }
+  .advice-text strong { color: var(--navy); font-weight: 700; }
+
+  /* ============ PROJECTION SUMMARY ============ */
+  .projection-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 20px;
+    border: 1px solid var(--border);
+  }
+  .projection-stat {
+    background: var(--bg-subtle);
+    padding: 16px 18px;
+  }
+  .projection-stat-label {
+    font-size: 11px; color: var(--gray); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .projection-stat-value {
+    font-size: 18px; font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .projection-stat-value.highlight { color: var(--green); }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot.blue { background: var(--blue); }
+  .dot.green { background: var(--green); }
+
+  /* ============ STACK ============ */
+  .results-stack {
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  .section-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 8px 0; color: var(--gray);
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .section-divider.visible { opacity: 1; }
+  .section-divider::before,
+  .section-divider::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.6s ease;
+  }
+  .section-divider.visible::before,
+  .section-divider.visible::after {
+    transform: scaleX(1);
+  }
+
+  /* ============ YEARLY CARD ============ */
+  .yearly-card {
+    background: linear-gradient(135deg, #0a0e1a 0%, #1e293b 100%);
+    color: white;
+    border: none;
+    padding: 28px;
+  }
+  .yearly-label {
+    font-size: 12px; opacity: 0.65;
+    text-transform: uppercase; letter-spacing: 1px;
+    font-weight: 600;
+  }
+  .yearly-value {
+    font-size: 36px; font-weight: 800;
+    margin-top: 8px; letter-spacing: -1.2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .yearly-note {
+    font-size: 12px; opacity: 0.55;
+    margin-top: 6px; letter-spacing: -0.1px;
+  }
+  .yearly-icon {
+    font-size: 48px; opacity: 0.15;
+  }
+
+  /* ============ TOAST ============ */
+  .toast {
+    position: fixed; top: 24px; left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 20px;
+    background: var(--navy);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 13px; font-weight: 500;
+    z-index: 9999;
+    box-shadow: 0 12px 32px -8px rgba(10, 14, 26, 0.35);
+    animation: toastSlide 0.25s ease;
+    max-width: 90vw;
+  }
+  .toast.error { background: var(--red); }
+  @keyframes toastSlide {
+    from { opacity: 0; transform: translate(-50%, -12px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
+  @media (max-width: 560px) {
+    .navbar { padding: 0 20px; }
+    .layout { padding: 24px 16px; }
+    .brand-sub, .brand-divider { display: none; }
+    .yearly-value { font-size: 28px; }
+    .chart-container-tall { height: 280px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">
+    <div class="brand-mark">FT</div>
+    FinTrack AI
+    <div class="brand-divider"></div>
+    <div class="brand-sub">Analysis Report</div>
+  </div>
+  <div class="nav-right">
+    <button class="btn-ghost" onclick="toggleDark()" id="darkBtn" title="Toggle theme">🌙</button>
+    <button class="btn-ghost" onclick="exportPDF()" title="Download PDF">📄 PDF</button>
+    <a href="/" class="btn-ghost">← New analysis</a>
+  </div>
+</nav>
+
+<div class="layout">
+  <div class="page-header">
+    <h1>Your analysis report</h1>
+    <p>A complete breakdown of your monthly expenses with AI-powered insights.</p>
+  </div>
+
+  <div class="results-stack" id="results">
+
+    <!-- Expense Breakdown -->
+    <div class="card" data-delay="0">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-title-icon">📋</div>
+          Expense breakdown
+        </div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Expense</th>
+            <th>Category</th>
+            <th style="text-align: right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="expenseTable"></tbody>
+      </table>
+    </div>
+
+    <!-- AI Advisor -->
+    <div class="card" data-delay="1">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-title-icon">🧠</div>
+          AI advisor
+        </div>
+      </div>
+      <ul class="advice-list" id="adviceList"></ul>
+    </div>
+
+    <!-- Smart Suggestions -->
+    <div class="card" id="suggestionsCard" style="display:none;" data-delay="2">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-title-icon">⚡</div>
+          Smart suggestions
+        </div>
+      </div>
+      <ul class="advice-list" id="suggestionsList"></ul>
+    </div>
+
+    <!-- 12-Month Projection -->
+    <div class="card" data-delay="3">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-title-icon">📈</div>
+          12-month savings projection
+        </div>
+        <div style="font-size: 12px; color: var(--gray); font-weight: 500;">
+          Assuming 8% annual return
+        </div>
+      </div>
+      <div class="chart-container-tall">
+        <canvas id="projectionChart"></canvas>
+      </div>
+
+      <div class="projection-summary">
+        <div class="projection-stat">
+          <div class="projection-stat-label">
+            <span class="dot blue"></span>
+            Simple savings
+          </div>
+          <div class="projection-stat-value" id="simpleTotal">Rs 0</div>
+        </div>
+        <div class="projection-stat">
+          <div class="projection-stat-label">
+            <span class="dot green"></span>
+            With investment
+          </div>
+          <div class="projection-stat-value highlight" id="investedTotal">Rs 0</div>
+        </div>
+        <div class="projection-stat">
+          <div class="projection-stat-label">✨ Extra earned</div>
+          <div class="projection-stat-value" id="extraEarned">Rs 0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Salary Distribution -->
+    <div class="card" data-delay="4">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-title-icon">📊</div>
+          Salary distribution
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="pieChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Summary Divider -->
+    <div class="section-divider" data-delay="5">Summary</div>
+
+    <!-- Yearly Projection -->
+    <div class="card yearly-card" data-delay="6">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div>
+          <div class="yearly-label">Projected yearly savings</div>
+          <div class="yearly-value" id="yearlyBig">Rs 0</div>
+          <div class="yearly-note">Based on your current monthly savings rate</div>
+        </div>
+        <div class="yearly-icon">📈</div>
+      </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-grid" id="kpiGrid" data-delay="7"></div>
+
+  </div>
+</div>
+
+<script>
+  let chartInstance = null;
+  let projectionInstance = null;
+
+  window.onload = () => {
+    const raw = sessionStorage.getItem("result");
+    if (!raw) {
+      window.location.href = "/";
+      return;
+    }
+    const data = JSON.parse(raw);
+    renderResult(data);
+    setupReveal();
+  };
+
+  // Simple, clean reveal — no blur, no bounce
+  function setupReveal() {
+    const items = document.querySelectorAll("[data-delay]");
+    items.forEach((el) => {
+      const delay = parseInt(el.dataset.delay) * 100 + 100;
+      setTimeout(() => {
+        el.classList.add("visible");
+        // For KPI children
+        el.querySelectorAll(".kpi").forEach((k, i) => {
+          setTimeout(() => k.classList.add("visible"), i * 60);
+        });
+      }, delay);
+    });
+  }
+
+  function showToast(msg, type = "success") {
+    const existing = document.querySelector(".toast");
+    if (existing) existing.remove();
+    const t = document.createElement("div");
+    t.className = "toast" + (type === "error" ? " error" : "");
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => {
+      t.style.transition = "opacity 0.2s";
+      t.style.opacity = "0";
+      setTimeout(() => t.remove(), 200);
+    }, 2200);
+  }
+
+  function toggleDark() {
+    document.body.classList.toggle("dark");
+    const isDark = document.body.classList.contains("dark");
+    document.getElementById("darkBtn").textContent = isDark ? "☀️" : "🌙";
+    localStorage.setItem("darkMode", isDark);
+  }
+
+  if (localStorage.getItem("darkMode") === "true") {
+    document.body.classList.add("dark");
+    document.getElementById("darkBtn").textContent = "☀️";
+  }
+
+  function exportPDF() {
+    showToast("Generating PDF…");
+    const element = document.getElementById("results");
+    const opt = {
+      margin: 10,
+      filename: 'FinTrack-Report-' + new Date().toISOString().slice(0,10) + '.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#fafbfc' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save().then(() => {
+      showToast("PDF downloaded");
+    });
+  }
+
+  function animateNumber(el, target, prefix = "Rs ", duration = 1200) {
+    const startTime = performance.now();
+    const isNegative = target < 0;
+    const absTarget = Math.abs(target);
+
+    function update(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(eased * absTarget);
+      el.textContent = prefix + (isNegative ? "-" : "") + current.toLocaleString();
+      if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+  }
+
+  function renderResult(data) {
+    // Expense Table
+    const tbody = document.getElementById("expenseTable");
+    tbody.innerHTML = "";
+    const catOrder = { important: 0, less_important: 1, optional: 2 };
+    const sorted = [...data.expenses].sort((a, b) => catOrder[a.category] - catOrder[b.category]);
+    sorted.forEach((e) => {
+      const label = e.category === "less_important" ? "less important" : e.category;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="font-weight:600; color: var(--navy);">${e.name}</td>
+        <td><span class="badge ${e.category}"><span class="badge-dot"></span>${label}</span></td>
+        <td class="amount" style="text-align:right;">Rs ${e.amount.toFixed(0)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Advice
+    const adviceList = document.getElementById("adviceList");
+    adviceList.innerHTML = "";
+    const iconMap = { danger: "🚨", warning: "⚠️", success: "✅", tip: "💡" };
+    data.advice.forEach(a => {
+      const li = document.createElement("li");
+      li.className = "advice-item " + a.type;
+      li.innerHTML = `
+        <div class="advice-icon">${iconMap[a.type] || "ℹ️"}</div>
+        <div class="advice-text">${a.text}</div>
+      `;
+      adviceList.appendChild(li);
+    });
+
+    renderSuggestions(data);
+    renderProjection(data);
+
+    // KPI
+    const kpiGrid = document.getElementById("kpiGrid");
+    const savingsNeg = data.monthly_savings < 0;
+    kpiGrid.innerHTML = `
+      <div class="kpi red">
+        <div class="kpi-label">Important</div>
+        <div class="kpi-value" id="kpiImportant">Rs 0</div>
+      </div>
+      <div class="kpi amber">
+        <div class="kpi-label">Less important</div>
+        <div class="kpi-value" id="kpiLess">Rs 0</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">Optional</div>
+        <div class="kpi-value" id="kpiOptional">Rs 0</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-label">Total expenses</div>
+        <div class="kpi-value" id="kpiTotal">Rs 0</div>
+      </div>
+      <div class="kpi purple">
+        <div class="kpi-label">Monthly savings</div>
+        <div class="kpi-value ${savingsNeg ? 'negative' : ''}" id="kpiSavings">Rs 0</div>
+      </div>
+    `;
+
+    setTimeout(() => {
+      animateNumber(document.getElementById("kpiImportant"), data.important, "Rs ", 900);
+      animateNumber(document.getElementById("kpiLess"), data.less, "Rs ", 1000);
+      animateNumber(document.getElementById("kpiOptional"), data.optional, "Rs ", 1100);
+      animateNumber(document.getElementById("kpiTotal"), data.total, "Rs ", 1200);
+      animateNumber(document.getElementById("kpiSavings"), data.monthly_savings, "Rs ", 1300);
+    }, 800);
+
+    setTimeout(() => {
+      animateNumber(document.getElementById("yearlyBig"), data.yearly_savings, "Rs ", 1400);
+    }, 900);
+
+    // Pie Chart
+    setTimeout(() => {
+      const ctx = document.getElementById("pieChart").getContext("2d");
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Important", "Less important", "Optional", "Savings"],
+          datasets: [{
+            data: [
+              data.important, data.less, data.optional,
+              Math.max(data.monthly_savings, 0)
+            ],
+            backgroundColor: ["#dc2626", "#f59e0b", "#10b981", "#4f46e5"],
+            borderWidth: 0,
+            spacing: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "68%",
+          animation: { duration: 800, easing: "easeOutQuart" },
+          plugins: {
+            legend: {
+              position: "right",
+              labels: {
+                font: { family: "Inter", size: 12, weight: "600" },
+                color: "#334155",
+                padding: 14,
+                usePointStyle: true,
+                pointStyle: "circle",
+                boxWidth: 8,
+                boxHeight: 8
+              }
+            },
+            tooltip: {
+              backgroundColor: "#0a0e1a",
+              padding: 12,
+              titleFont: { family: "Inter", size: 13, weight: "700" },
+              bodyFont: { family: "Inter", size: 12 },
+              cornerRadius: 8,
+              callbacks: {
+                label: (ctx) => "  Rs " + ctx.parsed.toLocaleString()
+              }
+            }
+          }
+        }
+      });
+    }, 600);
+  }
+
+  function renderProjection(data) {
+    const monthlySavings = data.monthly_savings;
+
+    if (monthlySavings <= 0) {
+      document.getElementById("simpleTotal").textContent = "Rs 0";
+      document.getElementById("investedTotal").textContent = "Rs 0";
+      document.getElementById("extraEarned").textContent = "Rs 0";
+      return;
+    }
+
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const simpleData = [];
+    const investedData = [];
+    const monthlyRate = 0.08 / 12;
+    let simple = 0;
+    let invested = 0;
+
+    for (let i = 0; i < 12; i++) {
+      simple += monthlySavings;
+      invested = (invested + monthlySavings) * (1 + monthlyRate);
+      simpleData.push(Math.round(simple));
+      investedData.push(Math.round(invested));
+    }
+
+    const simpleTotal = Math.round(simple);
+    const investedTotal = Math.round(invested);
+    const extra = investedTotal - simpleTotal;
+
+    setTimeout(() => {
+      animateNumber(document.getElementById("simpleTotal"), simpleTotal, "Rs ", 1200);
+      animateNumber(document.getElementById("investedTotal"), investedTotal, "Rs ", 1300);
+      animateNumber(document.getElementById("extraEarned"), extra, "Rs ", 1400);
+    }, 900);
+
+    setTimeout(() => {
+      const ctx = document.getElementById("projectionChart").getContext("2d");
+      if (projectionInstance) projectionInstance.destroy();
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+      gradient.addColorStop(0, "rgba(16, 185, 129, 0.18)");
+      gradient.addColorStop(1, "rgba(16, 185, 129, 0.01)");
+
+      projectionInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: "With investment (8%)",
+              data: investedData,
+              borderColor: "#10b981",
+              backgroundColor: gradient,
+              borderWidth: 2,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              pointHoverBackgroundColor: "#10b981",
+              pointHoverBorderColor: "#fff",
+              pointHoverBorderWidth: 2
+            },
+            {
+              label: "Simple savings",
+              data: simpleData,
+              borderColor: "#4f46e5",
+              backgroundColor: "transparent",
+              borderWidth: 1.8,
+              borderDash: [5, 4],
+              fill: false,
+              tension: 0.35,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              pointHoverBackgroundColor: "#4f46e5",
+              pointHoverBorderColor: "#fff",
+              pointHoverBorderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          animation: { duration: 900, easing: "easeOutQuart" },
+          plugins: {
+            legend: {
+              position: "top",
+              align: "end",
+              labels: {
+                font: { family: "Inter", size: 12, weight: "600" },
+                color: "#334155",
+                padding: 16,
+                usePointStyle: true,
+                pointStyle: "circle",
+                boxWidth: 8,
+                boxHeight: 8
+              }
+            },
+            tooltip: {
+              backgroundColor: "#0a0e1a",
+              padding: 12,
+              titleFont: { family: "Inter", size: 13, weight: "700" },
+              bodyFont: { family: "Inter", size: 12 },
+              cornerRadius: 8,
+              callbacks: {
+                label: (ctx) => "  " + ctx.dataset.label + ": Rs " + ctx.parsed.y.toLocaleString()
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                font: { family: "Inter", size: 11, weight: "500" },
+                color: "#94a3b8"
+              }
+            },
+            y: {
+              grid: {
+                color: "rgba(148, 163, 184, 0.15)",
+                drawBorder: false
+              },
+              ticks: {
+                font: { family: "Inter", size: 11, weight: "500" },
+                color: "#94a3b8",
+                callback: (v) => {
+                  if (v >= 100000) return "Rs " + (v / 100000).toFixed(1) + "L";
+                  if (v >= 1000) return "Rs " + (v / 1000).toFixed(0) + "k";
+                  return "Rs " + v;
+                }
+              }
+            }
+          }
+        }
+      });
+    }, 700);
+  }
+
+  function renderSuggestions(data) {
+    const suggestions = [];
+    const optionalItems = data.expenses.filter(e => e.category === "optional");
+    const lessItems = data.expenses.filter(e => e.category === "less_important");
+
+    if (optionalItems.length > 0) {
+      const topOpt = optionalItems.sort((a, b) => b.amount - a.amount)[0];
+      const yearlySave = topOpt.amount * 12;
+      suggestions.push({
+        type: "tip",
+        text: `If you cut "<strong>${topOpt.name}</strong>" (Rs ${topOpt.amount.toFixed(0)}/mo), you'll save <strong>Rs ${yearlySave.toLocaleString()}</strong> per year.`
+      });
+    }
+
+    if (lessItems.length > 0) {
+      const topLess = lessItems.sort((a, b) => b.amount - a.amount)[0];
+      const halfYearSave = (topLess.amount / 2) * 12;
+      suggestions.push({
+        type: "tip",
+        text: `Reduce "<strong>${topLess.name}</strong>" by 50% → save <strong>Rs ${halfYearSave.toLocaleString()}</strong> annually.`
+      });
+    }
+
+    if (data.optional > 0) {
+      const newSavings = data.monthly_savings + data.optional;
+      suggestions.push({
+        type: "success",
+        text: `Skipping all optional expenses would increase monthly savings to <strong>Rs ${newSavings.toFixed(0)}</strong>.`
+      });
+    }
+
+    if (data.monthly_savings > 0) {
+      const invest = data.monthly_savings * 12;
+      suggestions.push({
+        type: "success",
+        text: `Investing your savings in mutual funds (~12% return) could grow to <strong>Rs ${Math.round(invest * 1.12).toLocaleString()}</strong> in a year.`
+      });
+    }
+
+    if (suggestions.length > 0) {
+      const card = document.getElementById("suggestionsCard");
+      const list = document.getElementById("suggestionsList");
+      const iconMap = { danger: "🚨", warning: "⚠️", success: "✅", tip: "💡" };
+      card.style.display = "block";
+      list.innerHTML = suggestions.map(s => `
+        <li class="advice-item ${s.type}">
+          <div class="advice-icon">${iconMap[s.type]}</div>
+          <div class="advice-text">${s.text}</div>
+        </li>
+      `).join("");
+    }
+  }
+</script>
+</body>
+</html>
