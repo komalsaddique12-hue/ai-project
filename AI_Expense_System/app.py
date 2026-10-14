@@ -1,19 +1,46 @@
 from flask import Flask, render_template, request, jsonify
 import pickle
+import os
 
 app = Flask(__name__)
 
-# ---------- Load AI Model ----------
-with open("expense_model.pkl", "rb") as f:
-    ai_model = pickle.load(f)
+# ---------- Load AI Model (Safe Path for Vercel) ----------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "expense_model.pkl")
+
+try:
+    with open(MODEL_PATH, "rb") as f:
+        ai_model = pickle.load(f)
+    print("✅ AI Model loaded successfully")
+except Exception as e:
+    print("❌ MODEL LOAD ERROR:", e)
+    ai_model = None
 
 
 # ---------- AI Categorization ----------
 def categorize_expense(name):
+    if ai_model is None:
+        # Fallback: keyword-based categorization if model fails
+        name = name.lower()
+        important_kw = ["rent", "house", "bill", "gas", "water", "electric",
+                        "medical", "doctor", "medicine", "school", "fee",
+                        "grocery", "khana", "transport", "emi", "loan", "insurance"]
+        less_kw = ["internet", "wifi", "mobile", "phone", "clothing", "kapray",
+                   "restaurant", "gym", "netflix", "subscription", "shopping"]
+        optional_kw = ["movie", "cinema", "travel", "trip", "game", "gift", "luxury"]
+
+        for kw in important_kw:
+            if kw in name: return "important"
+        for kw in less_kw:
+            if kw in name: return "less_important"
+        for kw in optional_kw:
+            if kw in name: return "optional"
+        return "less_important"
+
     try:
         return ai_model.predict([name.lower()])[0]
     except Exception as e:
-        print("AI Error:", e)
+        print("AI Predict Error:", e)
         return "less_important"
 
 
@@ -158,8 +185,6 @@ def analyze():
 
     return jsonify(result)
 
-
-import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
