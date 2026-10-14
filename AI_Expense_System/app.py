@@ -1,24 +1,24 @@
 from flask import Flask, render_template, request, jsonify
+import pickle
 
 app = Flask(__name__)
 
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-@app.route("/analysis")
-def analysis():
-    return render_template("analysis.html")
+# ---------- Load AI Model ----------
+with open("expense_model.pkl", "rb") as f:
+    ai_model = pickle.load(f)
 
 
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    data = request.get_json()
-    salary = float(data.get("salary", 0))
-    expenses = data.get("expenses", [])
+# ---------- AI Categorization ----------
+def categorize_expense(name):
+    try:
+        return ai_model.predict([name.lower()])[0]
+    except Exception as e:
+        print("AI Error:", e)
+        return "less_important"
 
+
+# ---------- Analyze Single Month ----------
+def analyze_month(salary, expenses):
     categorized = []
     important_total = 0
     less_total = 0
@@ -44,112 +44,119 @@ def analyze():
 
     total = important_total + less_total + optional_total
     monthly_savings = salary - total
-    yearly_savings = monthly_savings * 12
 
-    advice = generate_advice(
-        salary, total, important_total,
-        less_total, optional_total, monthly_savings
-    )
-
-    what_if = {
-        "current": total,
-        "skip_optional": important_total + less_total,
-        "only_important": important_total
-    }
-
-    result = {
+    return {
         "expenses": categorized,
         "important": important_total,
         "less": less_total,
         "optional": optional_total,
         "total": total,
-        "monthly_savings": monthly_savings,
-        "yearly_savings": yearly_savings,
-        "advice": advice,
-        "what_if": what_if
+        "monthly_savings": monthly_savings
     }
 
-    return jsonify(result)
 
-
-def categorize_expense(name):
-    important_keywords = [
-        "rent", "house", "electricity", "electric", "bill", "water",
-        "gas", "internet", "wifi", "medicine", "medical", "doctor",
-        "hospital", "school", "fee", "tuition", "grocery", "groceries",
-        "food", "kitchen", "transport", "fuel", "petrol", "diesel",
-        "insurance", "loan", "emi", "debt", "tax"
-    ]
-    less_important_keywords = [
-        "phone", "mobile", "sim", "data", "package", "subscription",
-        "netflix", "spotify", "youtube", "prime", "gym", "fitness",
-        "clothes", "shopping", "dining", "restaurant", "cafe",
-        "coffee", "snacks", "cigarette", "beauty", "salon"
-    ]
-    optional_keywords = [
-        "game", "gaming", "movie", "cinema", "party", "trip",
-        "travel", "vacation", "gift", "donation", "luxury",
-        "entertainment", "hobby", "toy", "alcohol", "bar"
-    ]
-
-    for kw in important_keywords:
-        if kw in name:
-            return "important"
-    for kw in less_important_keywords:
-        if kw in name:
-            return "less_important"
-    for kw in optional_keywords:
-        if kw in name:
-            return "optional"
-
-    return "less_important"
-
-
-def generate_advice(salary, total, important, less, optional, savings):
+# ---------- Comparison Advice ----------
+def generate_comparison_advice(prev, curr, prev_salary, curr_salary):
     advice = []
 
-    if savings < 0:
+    prev_savings = prev_salary - prev["total"]
+    curr_savings = curr_salary - curr["total"]
+    diff = curr_savings - prev_savings
+    diff_pct = (diff / abs(prev_savings) * 100) if prev_savings != 0 else 0
+
+    if diff > 0:
+        advice.append({
+            "type": "success",
+            "text": f"Great! Your savings increased by Rs {diff:,.0f} ({diff_pct:+.1f}%) compared to last month."
+        })
+    elif diff < 0:
         advice.append({
             "type": "danger",
-            "text": f"You are overspending by Rs {abs(savings):,.0f} every month. "
-                    f"Your expenses (Rs {total:,.0f}) exceed your salary (Rs {salary:,.0f}). "
-                    f"Immediately cut optional and less important expenses."
-        })
-    elif savings < salary * 0.1:
-        advice.append({
-            "type": "warning",
-            "text": f"Your savings are very low (Rs {savings:,.0f}). "
-                    f"Try to save at least 20% of your salary for financial safety."
+            "text": f"⚠ Alert: Your savings decreased by Rs {abs(diff):,.0f} ({diff_pct:.1f}%) compared to last month."
         })
     else:
         advice.append({
-            "type": "success",
-            "text": f"Great job! You are saving Rs {savings:,.0f} every month. "
-                    f"Consider investing this in savings or mutual funds."
-        })
-
-    if optional > 0:
-        advice.append({
             "type": "tip",
-            "text": f"You can save Rs {optional:,.0f} per month by reducing optional "
-                    f"expenses like entertainment and luxury items."
+            "text": "Your savings are same as last month. Try to push a bit more this month."
         })
 
-    if less > salary * 0.2:
+    exp_diff = curr["total"] - prev["total"]
+    if exp_diff > 0:
         advice.append({
             "type": "warning",
-            "text": f"Your less important expenses are high (Rs {less:,.0f}). "
-                    f"Review subscriptions and dining costs to cut them down."
+            "text": f"Your expenses increased by Rs {exp_diff:,.0f} this month. Review your spending."
+        })
+    elif exp_diff < 0:
+        advice.append({
+            "type": "success",
+            "text": f"Nice! You reduced expenses by Rs {abs(exp_diff):,.0f} this month. Keep it up."
         })
 
-    if important > salary * 0.6:
+    if curr["optional"] > 0:
+        advice.append({
+            "type": "tip",
+            "text": f"You can save Rs {curr['optional']:,.0f} more by cutting optional expenses."
+        })
+
+    if curr["total"] > 0 and curr["important"] / curr["total"] > 0.7:
+        advice.append({
+            "type": "warning",
+            "text": f"Essentials take {curr['important']/curr['total']*100:.0f}% of your expenses. Try reducing fixed costs."
+        })
+
+    curr_rate = (curr_savings / curr_salary * 100) if curr_salary > 0 else 0
+    if curr_rate < 10:
         advice.append({
             "type": "danger",
-            "text": f"Your essential expenses (Rs {important:,.0f}) take more than "
-                    f"60% of your salary. Look for ways to reduce fixed costs."
+            "text": f"Your current savings rate is only {curr_rate:.1f}%. Aim for at least 20%."
+        })
+    elif curr_rate >= 20:
+        advice.append({
+            "type": "success",
+            "text": f"Excellent! You're saving {curr_rate:.1f}% of your income. Consider investing the surplus."
         })
 
     return advice
+
+
+# ---------- Routes ----------
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+@app.route("/analysis")
+def analysis():
+    return render_template("analysis.html")
+
+
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    data = request.get_json()
+
+    prev_data = data.get("previous", {})
+    curr_data = data.get("current", {})
+
+    prev_salary = float(prev_data.get("salary", 0))
+    curr_salary = float(curr_data.get("salary", 0))
+
+    prev_expenses = prev_data.get("expenses", [])
+    curr_expenses = curr_data.get("expenses", [])
+
+    prev_result = analyze_month(prev_salary, prev_expenses)
+    curr_result = analyze_month(curr_salary, curr_expenses)
+
+    advice = generate_comparison_advice(
+        prev_result, curr_result, prev_salary, curr_salary
+    )
+
+    result = {
+        "previous": prev_result,
+        "current": curr_result,
+        "advice": advice
+    }
+
+    return jsonify(result)
 
 
 import os

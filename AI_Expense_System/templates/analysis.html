@@ -1,961 +1,642 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FinTrack AI — Analysis Report</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<style>
-  :root {
-    --navy: #0a0e1a; --slate: #1e293b; --gray: #64748b;
-    --gray-light: #94a3b8; --border: #e5e7eb; --border-strong: #d1d5db;
-    --bg: #ffffff; --bg-subtle: #fafbfc;
-    --red: #dc2626; --red-bg: #fef2f2;
-    --amber: #f59e0b; --amber-bg: #fffbeb;
-    --green: #10b981; --green-bg: #f0fdf4;
-    --blue: #3b82f6; --blue-bg: #eff6ff;
-    --purple: #8b5cf6; --indigo: #4f46e5;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Financial Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #1a4d4a;
+            --primary-light: #2d7a75;
+            --accent: #d4c5a9;
+            --text-dark: #333;
+            --text-light: #777;
+            --card-bg: #ffffff;
+            --bg-color: #eef2f1;
+            --border-color: #e0e0e0;
+            --font-heading: 'Poppins', sans-serif;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-body); }
+        body { background: var(--bg-color); padding: 20px; min-height: 100vh; }
 
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg-subtle);
-    color: var(--navy);
-    font-size: 14px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    transition: background 0.3s, color 0.3s;
+        .dashboard {
+            max-width: 1350px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
 
-    background-image:
-      linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
-    background-size: 32px 32px;
-  }
+        /* HEADER */
+        .header {
+            background: var(--primary-dark);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header .month-label {
+            font-size: 13px;
+            opacity: 0.85;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+        .header h1 {
+            font-family: var(--font-heading);
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1.5px solid rgba(255,255,255,0.4);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--font-heading);
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.25); }
 
-  body.dark {
-    --navy: #f1f5f9; --slate: #cbd5e1; --gray: #94a3b8;
-    --gray-light: #64748b; --border: #334155; --border-strong: #475569;
-    --bg: #1e293b; --bg-subtle: #0f172a;
-    background-image:
-      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  }
-  body.dark .card { background: var(--bg); box-shadow: none; }
-  body.dark .data-table th { background: #0f172a; }
-  body.dark .data-table tbody tr:hover td { background: #0f172a; }
-  body.dark .kpi { background: var(--bg); }
-  body.dark .projection-summary { background: #0f172a; }
+        /* BODY GRID */
+        .body-grid { display: grid; grid-template-columns: 260px 1fr; gap: 0; }
 
-  /* ============ NAVBAR ============ */
-  .navbar {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 40px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  body.dark .navbar { background: rgba(15, 23, 42, 0.85); }
+        /* SIDEBAR */
+        .sidebar {
+            background: #fafbfa;
+            padding: 20px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .side-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+        .side-card h4 {
+            font-family: var(--font-heading);
+            font-size: 11px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 8px;
+            font-weight: 600;
+        }
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12.5px;
+            padding: 6px 0;
+            border-bottom: 1px dashed #eee;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item .amt {
+            font-family: var(--font-heading);
+            font-weight: 600;
+            color: var(--primary-dark);
+            font-feature-settings: 'tnum';
+            letter-spacing: -0.2px;
+        }
 
-  .brand {
-    display: flex; align-items: center; gap: 10px;
-    font-weight: 700; font-size: 15px;
-    letter-spacing: -0.2px;
-    color: var(--navy);
-  }
-  .brand-mark {
-    width: 28px; height: 28px; border-radius: 7px;
-    background: var(--navy);
-    color: white;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 13px;
-    letter-spacing: -0.5px;
-  }
-  .brand-divider {
-    width: 1px; height: 16px;
-    background: var(--border-strong);
-    margin: 0 4px;
-  }
-  .brand-sub {
-    font-size: 12px; font-weight: 500;
-    color: var(--gray);
-    letter-spacing: -0.1px;
-  }
+        /* MAIN CONTENT */
+        .main-content { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
 
-  .nav-right { display: flex; align-items: center; gap: 8px; }
+        /* COMPARISON BANNER */
+        .compare-banner {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
+            color: white;
+            border-radius: 12px;
+            padding: 22px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            text-align: center;
+            box-shadow: 0 6px 20px rgba(26,77,74,0.25);
+        }
+        .compare-banner .col { padding: 10px; }
+        .compare-banner .col-label {
+            font-size: 11px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .compare-banner .col-value {
+            font-family: var(--font-heading);
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            font-feature-settings: 'tnum';
+        }
+        .compare-banner .col-sub {
+            font-size: 11px;
+            opacity: 0.85;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .compare-banner .divider {
+            border-left: 1px solid rgba(255,255,255,0.25);
+        }
+        .diff-positive { color: #a5f3a0; }
+        .diff-negative { color: #ff9a9a; }
+        .diff-neutral  { color: var(--accent); }
 
-  .btn-ghost {
-    display: flex; align-items: center; gap: 6px;
-    padding: 8px 12px;
-    background: transparent;
-    border: 1px solid var(--border-strong);
-    border-radius: 8px;
-    font-size: 13px; font-weight: 500;
-    color: var(--slate);
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.15s;
-    text-decoration: none;
-    letter-spacing: -0.1px;
-  }
-  .btn-ghost:hover {
-    border-color: var(--navy);
-    color: var(--navy);
-    background: rgba(15, 23, 42, 0.04);
-  }
-  body.dark .btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: var(--navy);
-  }
+        /* TOP CARDS */
+        .top-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .top-card {
+            background: #fdfbf7;
+            border: 1px solid #e8e2d6;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+        .top-card .label {
+            font-size: 11px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .top-card .sub-label { font-size: 10px; color: #aaa; margin-bottom: 8px; font-weight: 500; }
+        .top-card .value {
+            font-family: var(--font-heading);
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            font-feature-settings: 'tnum';
+            letter-spacing: -0.3px;
+        }
+        .top-card .trend {
+            font-size: 11px;
+            margin-top: 6px;
+            font-weight: 700;
+        }
+        .trend-up { color: #2e7d32; }
+        .trend-down { color: #c62828; }
 
-  /* ============ LAYOUT ============ */
-  .layout { max-width: 920px; margin: 0 auto; padding: 40px 24px; }
+        /* CHARTS */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 15px;
+        }
+        .chart-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+        .chart-card .chart-title {
+            font-family: var(--font-heading);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .chart-card .chart-sub {
+            font-size: 10.5px;
+            color: var(--text-light);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .chart-box { position: relative; height: 200px; width: 100%; }
 
-  .page-header {
-    margin-bottom: 32px;
-  }
-  .page-header h1 {
-    font-size: 26px; font-weight: 700;
-    letter-spacing: -0.6px; margin-bottom: 6px;
-    color: var(--navy);
-  }
-  .page-header p {
-    color: var(--gray); font-size: 14px;
-    letter-spacing: -0.1px;
-  }
+        .chart-cashflow { grid-column: 1 / 2; grid-row: 1 / 3; }
+        .chart-allocation { grid-column: 2 / 4; grid-row: 1 / 2; }
+        .chart-expenses { grid-column: 2 / 3; grid-row: 2 / 3; }
+        .chart-bills { grid-column: 3 / 4; grid-row: 2 / 3; }
 
-  /* ============ SIMPLE FADE-IN CARDS ============ */
-  .card {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 24px;
-    box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.04),
-      0 8px 24px -12px rgba(15, 23, 42, 0.06);
-    transition: box-shadow 0.2s, opacity 0.5s ease, transform 0.5s ease;
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  .card.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  .card:hover {
-    box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.04),
-      0 12px 32px -12px rgba(15, 23, 42, 0.1);
-  }
+        /* ADVICE */
+        .advice-panel {
+            background: #fff;
+            border-radius: 10px;
+            padding: 18px;
+            border: 1px solid var(--border-color);
+        }
+        .advice-panel h3 {
+            font-family: var(--font-heading);
+            font-size: 14px;
+            color: var(--primary-dark);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+            font-weight: 600;
+        }
+        .advice-item {
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            border-left: 4px solid;
+            font-weight: 500;
+        }
+        .advice-danger { background: #ffebee; border-color: #f44336; color: #b71c1c; }
+        .advice-warning { background: #fff8e1; border-color: #ffc107; color: #856404; }
+        .advice-success { background: #e8f5e9; border-color: #4caf50; color: #1b5e20; }
+        .advice-tip { background: #e3f2fd; border-color: #2196f3; color: #0d47a1; }
 
-  .card-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 20px;
-  }
-  .card-title {
-    font-size: 14px; font-weight: 700;
-    display: flex; align-items: center; gap: 10px;
-    color: var(--navy);
-    letter-spacing: -0.2px;
-  }
-  .card-title-icon {
-    width: 26px; height: 26px; border-radius: 7px;
-    background: var(--blue-bg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
-  }
-  body.dark .card-title-icon { background: rgba(79, 70, 229, 0.15); }
-
-  /* ============ KPI ============ */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
-  }
-  .kpi {
-    padding: 18px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    position: relative;
-    transition: transform 0.2s, box-shadow 0.2s, opacity 0.4s;
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  .kpi.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  .kpi:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px -8px rgba(15, 23, 42, 0.12);
-  }
-  .kpi::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 3px; height: 100%;
-    border-radius: 12px 0 0 12px;
-  }
-  .kpi.red::before { background: var(--red); }
-  .kpi.amber::before { background: var(--amber); }
-  .kpi.green::before { background: var(--green); }
-  .kpi.blue::before { background: var(--blue); }
-  .kpi.purple::before { background: var(--purple); }
-
-  .kpi-label {
-    font-size: 11px; color: var(--gray); font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.5px;
-    margin-bottom: 6px;
-  }
-  .kpi-value {
-    font-size: 20px; font-weight: 700;
-    letter-spacing: -0.5px; color: var(--navy);
-    font-variant-numeric: tabular-nums;
-  }
-  .kpi-value.negative { color: var(--red); }
-
-  /* ============ TABLE ============ */
-  .data-table { width: 100%; border-collapse: collapse; }
-  .data-table th {
-    text-align: left; padding: 12px 14px;
-    font-size: 11px; font-weight: 700;
-    color: var(--gray);
-    text-transform: uppercase; letter-spacing: 0.5px;
-    background: var(--bg-subtle);
-    border-bottom: 1px solid var(--border);
-  }
-  .data-table td {
-    padding: 14px;
-    font-size: 13px;
-    border-bottom: 1px solid var(--border);
-    color: var(--slate);
-    letter-spacing: -0.1px;
-  }
-  .data-table tbody tr:last-child td { border-bottom: none; }
-  .data-table tbody tr {
-    transition: background 0.15s;
-  }
-  .data-table tbody tr:hover td { background: var(--bg-subtle); }
-  .data-table .amount {
-    font-weight: 600; color: var(--navy);
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* ============ BADGES ============ */
-  .badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 9px;
-    border-radius: 6px;
-    font-size: 11px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.3px;
-  }
-  .badge-dot { width: 5px; height: 5px; border-radius: 50%; }
-  .badge.important { background: var(--red-bg); color: var(--red); }
-  .badge.important .badge-dot { background: var(--red); }
-  .badge.less_important { background: var(--amber-bg); color: #b45309; }
-  .badge.less_important .badge-dot { background: var(--amber); }
-  .badge.optional { background: var(--green-bg); color: #047857; }
-  .badge.optional .badge-dot { background: var(--green); }
-  body.dark .badge.important { background: rgba(220, 38, 38, 0.15); }
-  body.dark .badge.less_important { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-  body.dark .badge.optional { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-
-  /* ============ CHART ============ */
-  .chart-container { position: relative; height: 260px; }
-  .chart-container-tall { position: relative; height: 320px; }
-
-  /* ============ ADVICE ============ */
-  .advice-list { list-style: none; }
-  .advice-item {
-    display: flex; gap: 12px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border);
-    align-items: flex-start;
-  }
-  .advice-item:last-child { border-bottom: none; }
-  .advice-icon {
-    width: 32px; height: 32px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 15px; flex-shrink: 0;
-  }
-  .advice-item.danger .advice-icon { background: var(--red-bg); }
-  .advice-item.warning .advice-icon { background: var(--amber-bg); }
-  .advice-item.success .advice-icon { background: var(--green-bg); }
-  .advice-item.tip .advice-icon { background: var(--blue-bg); }
-  body.dark .advice-item.danger .advice-icon { background: rgba(220, 38, 38, 0.15); }
-  body.dark .advice-item.warning .advice-icon { background: rgba(245, 158, 11, 0.15); }
-  body.dark .advice-item.success .advice-icon { background: rgba(16, 185, 129, 0.15); }
-  body.dark .advice-item.tip .advice-icon { background: rgba(79, 70, 229, 0.15); }
-  .advice-text {
-    font-size: 13px; color: var(--slate);
-    line-height: 1.55; padding-top: 6px;
-    letter-spacing: -0.1px;
-  }
-  .advice-text strong { color: var(--navy); font-weight: 700; }
-
-  /* ============ PROJECTION SUMMARY ============ */
-  .projection-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 1px;
-    background: var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    margin-top: 20px;
-    border: 1px solid var(--border);
-  }
-  .projection-stat {
-    background: var(--bg-subtle);
-    padding: 16px 18px;
-  }
-  .projection-stat-label {
-    font-size: 11px; color: var(--gray); font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.5px;
-    margin-bottom: 6px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .projection-stat-value {
-    font-size: 18px; font-weight: 700;
-    color: var(--navy);
-    letter-spacing: -0.4px;
-    font-variant-numeric: tabular-nums;
-  }
-  .projection-stat-value.highlight { color: var(--green); }
-  .dot {
-    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-  }
-  .dot.blue { background: var(--blue); }
-  .dot.green { background: var(--green); }
-
-  /* ============ STACK ============ */
-  .results-stack {
-    display: flex; flex-direction: column; gap: 20px;
-  }
-
-  .section-divider {
-    display: flex; align-items: center; gap: 12px;
-    margin: 8px 0; color: var(--gray);
-    font-size: 11px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 1px;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-  }
-  .section-divider.visible { opacity: 1; }
-  .section-divider::before,
-  .section-divider::after {
-    content: ''; flex: 1; height: 1px;
-    background: var(--border);
-    transform: scaleX(0);
-    transform-origin: center;
-    transition: transform 0.6s ease;
-  }
-  .section-divider.visible::before,
-  .section-divider.visible::after {
-    transform: scaleX(1);
-  }
-
-  /* ============ YEARLY CARD ============ */
-  .yearly-card {
-    background: linear-gradient(135deg, #0a0e1a 0%, #1e293b 100%);
-    color: white;
-    border: none;
-    padding: 28px;
-  }
-  .yearly-label {
-    font-size: 12px; opacity: 0.65;
-    text-transform: uppercase; letter-spacing: 1px;
-    font-weight: 600;
-  }
-  .yearly-value {
-    font-size: 36px; font-weight: 800;
-    margin-top: 8px; letter-spacing: -1.2px;
-    font-variant-numeric: tabular-nums;
-  }
-  .yearly-note {
-    font-size: 12px; opacity: 0.55;
-    margin-top: 6px; letter-spacing: -0.1px;
-  }
-  .yearly-icon {
-    font-size: 48px; opacity: 0.15;
-  }
-
-  /* ============ TOAST ============ */
-  .toast {
-    position: fixed; top: 24px; left: 50%;
-    transform: translateX(-50%);
-    padding: 12px 20px;
-    background: var(--navy);
-    color: #fff;
-    border-radius: 10px;
-    font-size: 13px; font-weight: 500;
-    z-index: 9999;
-    box-shadow: 0 12px 32px -8px rgba(10, 14, 26, 0.35);
-    animation: toastSlide 0.25s ease;
-    max-width: 90vw;
-  }
-  .toast.error { background: var(--red); }
-  @keyframes toastSlide {
-    from { opacity: 0; transform: translate(-50%, -12px); }
-    to { opacity: 1; transform: translate(-50%, 0); }
-  }
-
-  @media (max-width: 560px) {
-    .navbar { padding: 0 20px; }
-    .layout { padding: 24px 16px; }
-    .brand-sub, .brand-divider { display: none; }
-    .yearly-value { font-size: 28px; }
-    .chart-container-tall { height: 280px; }
-  }
-</style>
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .body-grid { grid-template-columns: 1fr; }
+            .charts-grid { grid-template-columns: 1fr 1fr; }
+            .chart-cashflow { grid-column: 1 / 3; grid-row: auto; }
+            .chart-allocation { grid-column: 1 / 3; grid-row: auto; }
+            .top-cards { grid-template-columns: repeat(2, 1fr); }
+            .compare-banner { grid-template-columns: 1fr; }
+            .compare-banner .divider { border-left: none; border-top: 1px solid rgba(255,255,255,0.25); padding-top: 15px; }
+        }
+        @media (max-width: 700px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .chart-cashflow, .chart-allocation,
+            .chart-expenses, .chart-bills { grid-column: 1 / 2; grid-row: auto; }
+            .top-cards { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 <body>
 
-<nav class="navbar">
-  <div class="brand">
-    <div class="brand-mark">FT</div>
-    FinTrack AI
-    <div class="brand-divider"></div>
-    <div class="brand-sub">Analysis Report</div>
-  </div>
-  <div class="nav-right">
-    <button class="btn-ghost" onclick="toggleDark()" id="darkBtn" title="Toggle theme">🌙</button>
-    <button class="btn-ghost" onclick="exportPDF()" title="Download PDF">📄 PDF</button>
-    <a href="/" class="btn-ghost">← New analysis</a>
-  </div>
-</nav>
+<div class="dashboard">
 
-<div class="layout">
-  <div class="page-header">
-    <h1>Your analysis report</h1>
-    <p>A complete breakdown of your monthly expenses with AI-powered insights.</p>
-  </div>
-
-  <div class="results-stack" id="results">
-
-    <!-- Expense Breakdown -->
-    <div class="card" data-delay="0">
-      <div class="card-header">
-        <div class="card-title">
-          <div class="card-title-icon">📋</div>
-          Expense breakdown
-        </div>
-      </div>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Expense</th>
-            <th>Category</th>
-            <th style="text-align: right;">Amount</th>
-          </tr>
-        </thead>
-        <tbody id="expenseTable"></tbody>
-      </table>
-    </div>
-
-    <!-- AI Advisor -->
-    <div class="card" data-delay="1">
-      <div class="card-header">
-        <div class="card-title">
-          <div class="card-title-icon">🧠</div>
-          AI advisor
-        </div>
-      </div>
-      <ul class="advice-list" id="adviceList"></ul>
-    </div>
-
-    <!-- Smart Suggestions -->
-    <div class="card" id="suggestionsCard" style="display:none;" data-delay="2">
-      <div class="card-header">
-        <div class="card-title">
-          <div class="card-title-icon">⚡</div>
-          Smart suggestions
-        </div>
-      </div>
-      <ul class="advice-list" id="suggestionsList"></ul>
-    </div>
-
-    <!-- 12-Month Projection -->
-    <div class="card" data-delay="3">
-      <div class="card-header">
-        <div class="card-title">
-          <div class="card-title-icon">📈</div>
-          12-month savings projection
-        </div>
-        <div style="font-size: 12px; color: var(--gray); font-weight: 500;">
-          Assuming 8% annual return
-        </div>
-      </div>
-      <div class="chart-container-tall">
-        <canvas id="projectionChart"></canvas>
-      </div>
-
-      <div class="projection-summary">
-        <div class="projection-stat">
-          <div class="projection-stat-label">
-            <span class="dot blue"></span>
-            Simple savings
-          </div>
-          <div class="projection-stat-value" id="simpleTotal">Rs 0</div>
-        </div>
-        <div class="projection-stat">
-          <div class="projection-stat-label">
-            <span class="dot green"></span>
-            With investment
-          </div>
-          <div class="projection-stat-value highlight" id="investedTotal">Rs 0</div>
-        </div>
-        <div class="projection-stat">
-          <div class="projection-stat-label">✨ Extra earned</div>
-          <div class="projection-stat-value" id="extraEarned">Rs 0</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Salary Distribution -->
-    <div class="card" data-delay="4">
-      <div class="card-header">
-        <div class="card-title">
-          <div class="card-title-icon">📊</div>
-          Salary distribution
-        </div>
-      </div>
-      <div class="chart-container">
-        <canvas id="pieChart"></canvas>
-      </div>
-    </div>
-
-    <!-- Summary Divider -->
-    <div class="section-divider" data-delay="5">Summary</div>
-
-    <!-- Yearly Projection -->
-    <div class="card yearly-card" data-delay="6">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div class="header">
         <div>
-          <div class="yearly-label">Projected yearly savings</div>
-          <div class="yearly-value" id="yearlyBig">Rs 0</div>
-          <div class="yearly-note">Based on your current monthly savings rate</div>
+            <div class="month-label" id="monthLabel">Comparing —</div>
+            <h1>FINANCIAL DASHBOARD</h1>
         </div>
-        <div class="yearly-icon">📈</div>
-      </div>
+        <a href="/" class="back-btn">← Back to Input</a>
     </div>
 
-    <!-- KPI -->
-    <div class="kpi-grid" id="kpiGrid" data-delay="7"></div>
+    <div class="body-grid">
 
-  </div>
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="side-card">
+                <h4>Highest Expenses (Current)</h4>
+                <div id="highestExpensesList">
+                    <div class="list-item"><span>—</span><span class="amt">Rs 0</span></div>
+                </div>
+            </div>
+
+            <div class="side-card">
+                <h4>All Expenses (Current)</h4>
+                <div id="expenseListContainer" style="max-height:300px; overflow-y:auto;">
+                    <div class="list-item"><span>No expenses</span><span></span></div>
+                </div>
+            </div>
+
+            <div class="side-card">
+                <h4>Category Breakdown</h4>
+                <div id="categoryBreakdown">
+                    <div class="list-item"><span>—</span><span class="amt">Rs 0</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+
+            <!-- Comparison Banner -->
+            <div class="compare-banner">
+                <div class="col">
+                    <div class="col-label" id="prevMonthLabel">Previous Month</div>
+                    <div class="col-value" id="prevSavingsValue">Rs 0</div>
+                    <div class="col-sub">Savings</div>
+                </div>
+                <div class="col divider">
+                    <div class="col-label">Difference</div>
+                    <div class="col-value" id="diffValue">Rs 0</div>
+                    <div class="col-sub" id="diffPercent">0%</div>
+                </div>
+                <div class="col divider">
+                    <div class="col-label" id="currMonthLabel">Current Month</div>
+                    <div class="col-value" id="currSavingsValue">Rs 0</div>
+                    <div class="col-sub">Savings</div>
+                </div>
+            </div>
+
+            <!-- Top Cards -->
+            <div class="top-cards">
+                <div class="top-card">
+                    <div class="label">Previous Income</div>
+                    <div class="sub-label">Salary</div>
+                    <div class="value" id="prevIncomeCard">Rs 0</div>
+                    <div class="trend trend-neutral" id="prevIncomeTrend">—</div>
+                </div>
+                <div class="top-card">
+                    <div class="label">Current Income</div>
+                    <div class="sub-label">Salary</div>
+                    <div class="value" id="currIncomeCard">Rs 0</div>
+                    <div class="trend" id="currIncomeTrend">—</div>
+                </div>
+                <div class="top-card">
+                    <div class="label">Previous Expenses</div>
+                    <div class="sub-label">Total Spent</div>
+                    <div class="value" id="prevExpenseCard">Rs 0</div>
+                    <div class="trend trend-neutral" id="prevExpenseTrend">—</div>
+                </div>
+                <div class="top-card">
+                    <div class="label">Current Expenses</div>
+                    <div class="sub-label">Total Spent</div>
+                    <div class="value" id="currExpenseCard">Rs 0</div>
+                    <div class="trend" id="currExpenseTrend">—</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="chart-card chart-cashflow">
+                    <div class="chart-title">Cashflow Comparison</div>
+                    <div class="chart-sub">Previous vs Current</div>
+                    <div class="chart-box"><canvas id="cashflowChart"></canvas></div>
+                </div>
+                <div class="chart-card chart-allocation">
+                    <div class="chart-title">Savings Trend</div>
+                    <div class="chart-sub">Two-Month Comparison</div>
+                    <div class="chart-box"><canvas id="savingsTrendChart"></canvas></div>
+                </div>
+                <div class="chart-card chart-expenses">
+                    <div class="chart-title">Category Split (Current)</div>
+                    <div class="chart-sub">Important / Less / Optional</div>
+                    <div class="chart-box"><canvas id="expensesChart"></canvas></div>
+                </div>
+                <div class="chart-card chart-bills">
+                    <div class="chart-title">Top Expenses (Current)</div>
+                    <div class="chart-sub">Top 6 Items</div>
+                    <div class="chart-box"><canvas id="billsChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- AI Advice -->
+            <div class="advice-panel">
+                <h3>🧠 AI Advisor — Comparison Insights</h3>
+                <div id="adviceContainer"></div>
+            </div>
+
+        </div>
+    </div>
 </div>
 
 <script>
-  let chartInstance = null;
-  let projectionInstance = null;
+// ============================================================
+// Chart.js global settings with Poppins font
+// ============================================================
+Chart.defaults.devicePixelRatio = window.devicePixelRatio || 1;
+Chart.defaults.font.family = "'Poppins', 'Inter', 'Segoe UI', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.font.weight = '500';
+Chart.defaults.color = '#666';
 
-  window.onload = () => {
-    const raw = sessionStorage.getItem("result");
-    if (!raw) {
-      window.location.href = "/";
-      return;
-    }
-    const data = JSON.parse(raw);
-    renderResult(data);
-    setupReveal();
-  };
+// ===== Load Data =====
+const dataStr = sessionStorage.getItem('analysisResult');
+if (!dataStr) {
+    alert("No analysis data found. Please enter your expenses first.");
+    window.location.href = '/';
+}
 
-  // Simple, clean reveal — no blur, no bounce
-  function setupReveal() {
-    const items = document.querySelectorAll("[data-delay]");
-    items.forEach((el) => {
-      const delay = parseInt(el.dataset.delay) * 100 + 100;
-      setTimeout(() => {
-        el.classList.add("visible");
-        // For KPI children
-        el.querySelectorAll(".kpi").forEach((k, i) => {
-          setTimeout(() => k.classList.add("visible"), i * 60);
-        });
-      }, delay);
-    });
-  }
+const result = JSON.parse(dataStr);
+const prevMonth = sessionStorage.getItem('prevMonth') || 'Previous';
+const currMonth = sessionStorage.getItem('currMonth') || 'Current';
+const prevSalary = parseFloat(sessionStorage.getItem('prevSalary')) || 0;
+const currSalary = parseFloat(sessionStorage.getItem('currSalary')) || 0;
 
-  function showToast(msg, type = "success") {
-    const existing = document.querySelector(".toast");
-    if (existing) existing.remove();
-    const t = document.createElement("div");
-    t.className = "toast" + (type === "error" ? " error" : "");
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => {
-      t.style.transition = "opacity 0.2s";
-      t.style.opacity = "0";
-      setTimeout(() => t.remove(), 200);
-    }, 2200);
-  }
+// ===== Header =====
+document.getElementById('monthLabel').innerText = `Comparing: ${prevMonth} vs ${currMonth}`;
+document.getElementById('prevMonthLabel').innerText = prevMonth;
+document.getElementById('currMonthLabel').innerText = currMonth;
 
-  function toggleDark() {
-    document.body.classList.toggle("dark");
-    const isDark = document.body.classList.contains("dark");
-    document.getElementById("darkBtn").textContent = isDark ? "☀️" : "🌙";
-    localStorage.setItem("darkMode", isDark);
-  }
+// ===== Compute & Display =====
+const prevSavings = prevSalary - result.previous.total;
+const currSavings = currSalary - result.current.total;
+const savingsDiff = currSavings - prevSavings;
+const diffPercent = prevSavings !== 0 ? ((savingsDiff / Math.abs(prevSavings)) * 100) : 0;
 
-  if (localStorage.getItem("darkMode") === "true") {
-    document.body.classList.add("dark");
-    document.getElementById("darkBtn").textContent = "☀️";
-  }
+document.getElementById('prevSavingsValue').innerText = 'Rs ' + prevSavings.toLocaleString();
+document.getElementById('currSavingsValue').innerText = 'Rs ' + currSavings.toLocaleString();
 
-  function exportPDF() {
-    showToast("Generating PDF…");
-    const element = document.getElementById("results");
-    const opt = {
-      margin: 10,
-      filename: 'FinTrack-Report-' + new Date().toISOString().slice(0,10) + '.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#fafbfc' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    html2pdf().set(opt).from(element).save().then(() => {
-      showToast("PDF downloaded");
-    });
-  }
+const diffEl = document.getElementById('diffValue');
+const diffPctEl = document.getElementById('diffPercent');
+const sign = savingsDiff >= 0 ? '+' : '';
+diffEl.innerText = sign + 'Rs ' + savingsDiff.toLocaleString();
+diffPctEl.innerText = sign + diffPercent.toFixed(1) + '%';
+diffEl.className = 'col-value ' + (savingsDiff > 0 ? 'diff-positive' : savingsDiff < 0 ? 'diff-negative' : 'diff-neutral');
 
-  function animateNumber(el, target, prefix = "Rs ", duration = 1200) {
-    const startTime = performance.now();
-    const isNegative = target < 0;
-    const absTarget = Math.abs(target);
+document.getElementById('prevIncomeCard').innerText = 'Rs ' + prevSalary.toLocaleString();
+document.getElementById('currIncomeCard').innerText = 'Rs ' + currSalary.toLocaleString();
+document.getElementById('prevExpenseCard').innerText = 'Rs ' + result.previous.total.toLocaleString();
+document.getElementById('currExpenseCard').innerText = 'Rs ' + result.current.total.toLocaleString();
 
-    function update(now) {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(eased * absTarget);
-      el.textContent = prefix + (isNegative ? "-" : "") + current.toLocaleString();
-      if (progress < 1) requestAnimationFrame(update);
-    }
-    requestAnimationFrame(update);
-  }
+const incomeDiff = currSalary - prevSalary;
+const incTrendEl = document.getElementById('currIncomeTrend');
+incTrendEl.innerText = (incomeDiff >= 0 ? '▲ +' : '▼ ') + 'Rs ' + incomeDiff.toLocaleString();
+incTrendEl.className = 'trend ' + (incomeDiff >= 0 ? 'trend-up' : 'trend-down');
 
-  function renderResult(data) {
-    // Expense Table
-    const tbody = document.getElementById("expenseTable");
-    tbody.innerHTML = "";
-    const catOrder = { important: 0, less_important: 1, optional: 2 };
-    const sorted = [...data.expenses].sort((a, b) => catOrder[a.category] - catOrder[b.category]);
-    sorted.forEach((e) => {
-      const label = e.category === "less_important" ? "less important" : e.category;
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td style="font-weight:600; color: var(--navy);">${e.name}</td>
-        <td><span class="badge ${e.category}"><span class="badge-dot"></span>${label}</span></td>
-        <td class="amount" style="text-align:right;">Rs ${e.amount.toFixed(0)}</td>
-      `;
-      tbody.appendChild(tr);
-    });
+const expDiff = result.current.total - result.previous.total;
+const expTrendEl = document.getElementById('currExpenseTrend');
+expTrendEl.innerText = (expDiff >= 0 ? '▲ +' : '▼ ') + 'Rs ' + expDiff.toLocaleString();
+expTrendEl.className = 'trend ' + (expDiff <= 0 ? 'trend-up' : 'trend-down');
 
-    // Advice
-    const adviceList = document.getElementById("adviceList");
-    adviceList.innerHTML = "";
-    const iconMap = { danger: "🚨", warning: "⚠️", success: "✅", tip: "💡" };
-    data.advice.forEach(a => {
-      const li = document.createElement("li");
-      li.className = "advice-item " + a.type;
-      li.innerHTML = `
-        <div class="advice-icon">${iconMap[a.type] || "ℹ️"}</div>
-        <div class="advice-text">${a.text}</div>
-      `;
-      adviceList.appendChild(li);
-    });
+// ===== Sidebar =====
+const sortedCurr = [...result.current.expenses].sort((a,b) => b.amount - a.amount).slice(0, 3);
+document.getElementById('highestExpensesList').innerHTML = sortedCurr.map(e =>
+    `<div class="list-item"><span>${e.name}</span><span class="amt">Rs ${e.amount.toLocaleString()}</span></div>`
+).join('') || '<div class="list-item"><span>—</span><span></span></div>';
 
-    renderSuggestions(data);
-    renderProjection(data);
+document.getElementById('expenseListContainer').innerHTML = result.current.expenses.map(e => {
+    const color = e.category === 'important' ? '#f44336'
+                : e.category === 'less_important' ? '#ffc107' : '#4caf50';
+    return `<div class="list-item">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;"></span>${e.name}</span>
+        <span class="amt">Rs ${e.amount.toLocaleString()}</span>
+    </div>`;
+}).join('');
 
-    // KPI
-    const kpiGrid = document.getElementById("kpiGrid");
-    const savingsNeg = data.monthly_savings < 0;
-    kpiGrid.innerHTML = `
-      <div class="kpi red">
-        <div class="kpi-label">Important</div>
-        <div class="kpi-value" id="kpiImportant">Rs 0</div>
-      </div>
-      <div class="kpi amber">
-        <div class="kpi-label">Less important</div>
-        <div class="kpi-value" id="kpiLess">Rs 0</div>
-      </div>
-      <div class="kpi green">
-        <div class="kpi-label">Optional</div>
-        <div class="kpi-value" id="kpiOptional">Rs 0</div>
-      </div>
-      <div class="kpi blue">
-        <div class="kpi-label">Total expenses</div>
-        <div class="kpi-value" id="kpiTotal">Rs 0</div>
-      </div>
-      <div class="kpi purple">
-        <div class="kpi-label">Monthly savings</div>
-        <div class="kpi-value ${savingsNeg ? 'negative' : ''}" id="kpiSavings">Rs 0</div>
-      </div>
-    `;
+document.getElementById('categoryBreakdown').innerHTML = `
+    <div class="list-item"><span>🔴 Important</span><span class="amt">Rs ${result.current.important.toLocaleString()}</span></div>
+    <div class="list-item"><span>🟡 Less Important</span><span class="amt">Rs ${result.current.less.toLocaleString()}</span></div>
+    <div class="list-item"><span>🟢 Optional</span><span class="amt">Rs ${result.current.optional.toLocaleString()}</span></div>
+`;
 
-    setTimeout(() => {
-      animateNumber(document.getElementById("kpiImportant"), data.important, "Rs ", 900);
-      animateNumber(document.getElementById("kpiLess"), data.less, "Rs ", 1000);
-      animateNumber(document.getElementById("kpiOptional"), data.optional, "Rs ", 1100);
-      animateNumber(document.getElementById("kpiTotal"), data.total, "Rs ", 1200);
-      animateNumber(document.getElementById("kpiSavings"), data.monthly_savings, "Rs ", 1300);
-    }, 800);
+document.getElementById('adviceContainer').innerHTML = result.advice.map(a =>
+    `<div class="advice-item advice-${a.type}">${a.text}</div>`
+).join('') || '<div class="advice-item advice-tip">No advice available.</div>';
 
-    setTimeout(() => {
-      animateNumber(document.getElementById("yearlyBig"), data.yearly_savings, "Rs ", 1400);
-    }, 900);
+// ============================================================
+// CHARTS — Sharp & Crisp with Poppins
+// ============================================================
 
-    // Pie Chart
-    setTimeout(() => {
-      const ctx = document.getElementById("pieChart").getContext("2d");
-      if (chartInstance) chartInstance.destroy();
-      chartInstance = new Chart(ctx, {
-        type: "doughnut",
-        data: {
-          labels: ["Important", "Less important", "Optional", "Savings"],
-          datasets: [{
-            data: [
-              data.important, data.less, data.optional,
-              Math.max(data.monthly_savings, 0)
-            ],
-            backgroundColor: ["#dc2626", "#f59e0b", "#10b981", "#4f46e5"],
-            borderWidth: 0,
-            spacing: 2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: "68%",
-          animation: { duration: 800, easing: "easeOutQuart" },
-          plugins: {
-            legend: {
-              position: "right",
-              labels: {
-                font: { family: "Inter", size: 12, weight: "600" },
-                color: "#334155",
-                padding: 14,
-                usePointStyle: true,
-                pointStyle: "circle",
-                boxWidth: 8,
-                boxHeight: 8
-              }
-            },
-            tooltip: {
-              backgroundColor: "#0a0e1a",
-              padding: 12,
-              titleFont: { family: "Inter", size: 13, weight: "700" },
-              bodyFont: { family: "Inter", size: 12 },
-              cornerRadius: 8,
-              callbacks: {
-                label: (ctx) => "  Rs " + ctx.parsed.toLocaleString()
-              }
-            }
-          }
-        }
-      });
-    }, 600);
-  }
-
-  function renderProjection(data) {
-    const monthlySavings = data.monthly_savings;
-
-    if (monthlySavings <= 0) {
-      document.getElementById("simpleTotal").textContent = "Rs 0";
-      document.getElementById("investedTotal").textContent = "Rs 0";
-      document.getElementById("extraEarned").textContent = "Rs 0";
-      return;
-    }
-
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const simpleData = [];
-    const investedData = [];
-    const monthlyRate = 0.08 / 12;
-    let simple = 0;
-    let invested = 0;
-
-    for (let i = 0; i < 12; i++) {
-      simple += monthlySavings;
-      invested = (invested + monthlySavings) * (1 + monthlyRate);
-      simpleData.push(Math.round(simple));
-      investedData.push(Math.round(invested));
-    }
-
-    const simpleTotal = Math.round(simple);
-    const investedTotal = Math.round(invested);
-    const extra = investedTotal - simpleTotal;
-
-    setTimeout(() => {
-      animateNumber(document.getElementById("simpleTotal"), simpleTotal, "Rs ", 1200);
-      animateNumber(document.getElementById("investedTotal"), investedTotal, "Rs ", 1300);
-      animateNumber(document.getElementById("extraEarned"), extra, "Rs ", 1400);
-    }, 900);
-
-    setTimeout(() => {
-      const ctx = document.getElementById("projectionChart").getContext("2d");
-      if (projectionInstance) projectionInstance.destroy();
-
-      const gradient = ctx.createLinearGradient(0, 0, 0, 320);
-      gradient.addColorStop(0, "rgba(16, 185, 129, 0.18)");
-      gradient.addColorStop(1, "rgba(16, 185, 129, 0.01)");
-
-      projectionInstance = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: months,
-          datasets: [
+// 1. Cashflow Comparison
+new Chart(document.getElementById('cashflowChart'), {
+    type: 'bar',
+    data: {
+        labels: ['Income', 'Important', 'Less Imp.', 'Optional', 'Savings'],
+        datasets: [
             {
-              label: "With investment (8%)",
-              data: investedData,
-              borderColor: "#10b981",
-              backgroundColor: gradient,
-              borderWidth: 2,
-              fill: true,
-              tension: 0.35,
-              pointRadius: 0,
-              pointHoverRadius: 4,
-              pointHoverBackgroundColor: "#10b981",
-              pointHoverBorderColor: "#fff",
-              pointHoverBorderWidth: 2
+                label: prevMonth,
+                data: [prevSalary, result.previous.important, result.previous.less, result.previous.optional, prevSavings],
+                backgroundColor: '#d4c5a9',
+                borderRadius: 5,
+                barPercentage: 0.7
             },
             {
-              label: "Simple savings",
-              data: simpleData,
-              borderColor: "#4f46e5",
-              backgroundColor: "transparent",
-              borderWidth: 1.8,
-              borderDash: [5, 4],
-              fill: false,
-              tension: 0.35,
-              pointRadius: 0,
-              pointHoverRadius: 4,
-              pointHoverBackgroundColor: "#4f46e5",
-              pointHoverBorderColor: "#fff",
-              pointHoverBorderWidth: 2
+                label: currMonth,
+                data: [currSalary, result.current.important, result.current.less, result.current.optional, currSavings],
+                backgroundColor: '#1a4d4a',
+                borderRadius: 5,
+                barPercentage: 0.7
             }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: "index", intersect: false },
-          animation: { duration: 900, easing: "easeOutQuart" },
-          plugins: {
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        devicePixelRatio: 3,
+        animation: { duration: 800 },
+        plugins: {
             legend: {
-              position: "top",
-              align: "end",
-              labels: {
-                font: { family: "Inter", size: 12, weight: "600" },
-                color: "#334155",
-                padding: 16,
-                usePointStyle: true,
-                pointStyle: "circle",
-                boxWidth: 8,
-                boxHeight: 8
-              }
-            },
-            tooltip: {
-              backgroundColor: "#0a0e1a",
-              padding: 12,
-              titleFont: { family: "Inter", size: 13, weight: "700" },
-              bodyFont: { family: "Inter", size: 12 },
-              cornerRadius: 8,
-              callbacks: {
-                label: (ctx) => "  " + ctx.dataset.label + ": Rs " + ctx.parsed.y.toLocaleString()
-              }
+                position: 'top',
+                labels: { font: { size: 10, family: 'Poppins', weight: '500' }, boxWidth: 12, padding: 8 }
             }
-          },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: {
-                font: { family: "Inter", size: 11, weight: "500" },
-                color: "#94a3b8"
-              }
-            },
+        },
+        scales: {
             y: {
-              grid: {
-                color: "rgba(148, 163, 184, 0.15)",
-                drawBorder: false
-              },
-              ticks: {
-                font: { family: "Inter", size: 11, weight: "500" },
-                color: "#94a3b8",
-                callback: (v) => {
-                  if (v >= 100000) return "Rs " + (v / 100000).toFixed(1) + "L";
-                  if (v >= 1000) return "Rs " + (v / 1000).toFixed(0) + "k";
-                  return "Rs " + v;
-                }
-              }
+                beginAtZero: true,
+                grid: { color: '#f0f0f0', drawBorder: false },
+                ticks: { font: { size: 9, family: 'Poppins', weight: '500' }, color: '#888' }
+            },
+            x: {
+                grid: { display: false },
+                ticks: { font: { size: 9, family: 'Poppins', weight: '500' }, color: '#888' }
             }
-          }
         }
-      });
-    }, 700);
-  }
-
-  function renderSuggestions(data) {
-    const suggestions = [];
-    const optionalItems = data.expenses.filter(e => e.category === "optional");
-    const lessItems = data.expenses.filter(e => e.category === "less_important");
-
-    if (optionalItems.length > 0) {
-      const topOpt = optionalItems.sort((a, b) => b.amount - a.amount)[0];
-      const yearlySave = topOpt.amount * 12;
-      suggestions.push({
-        type: "tip",
-        text: `If you cut "<strong>${topOpt.name}</strong>" (Rs ${topOpt.amount.toFixed(0)}/mo), you'll save <strong>Rs ${yearlySave.toLocaleString()}</strong> per year.`
-      });
     }
+});
 
-    if (lessItems.length > 0) {
-      const topLess = lessItems.sort((a, b) => b.amount - a.amount)[0];
-      const halfYearSave = (topLess.amount / 2) * 12;
-      suggestions.push({
-        type: "tip",
-        text: `Reduce "<strong>${topLess.name}</strong>" by 50% → save <strong>Rs ${halfYearSave.toLocaleString()}</strong> annually.`
-      });
+// 2. Savings Trend
+new Chart(document.getElementById('savingsTrendChart'), {
+    type: 'line',
+    data: {
+        labels: [prevMonth, currMonth],
+        datasets: [{
+            label: 'Savings (Rs)',
+            data: [prevSavings, currSavings],
+            borderColor: '#1a4d4a',
+            backgroundColor: 'rgba(26,77,74,0.15)',
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#1a4d4a',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 7,
+            pointHoverRadius: 9,
+            borderWidth: 3
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        devicePixelRatio: 3,
+        animation: { duration: 800 },
+        plugins: { legend: { display: false } },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: '#f0f0f0', drawBorder: false },
+                ticks: { font: { size: 10, family: 'Poppins', weight: '500' }, color: '#888' }
+            },
+            x: {
+                grid: { display: false },
+                ticks: { font: { size: 11, family: 'Poppins', weight: '500' }, color: '#888' }
+            }
+        }
     }
+});
 
-    if (data.optional > 0) {
-      const newSavings = data.monthly_savings + data.optional;
-      suggestions.push({
-        type: "success",
-        text: `Skipping all optional expenses would increase monthly savings to <strong>Rs ${newSavings.toFixed(0)}</strong>.`
-      });
+// 3. Category Split
+new Chart(document.getElementById('expensesChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Important', 'Less Imp.', 'Optional'],
+        datasets: [{
+            data: [result.current.important, result.current.less, result.current.optional],
+            backgroundColor: ['#2d7a75', '#a8c5c2', '#dcdcdc'],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        devicePixelRatio: 3,
+        cutout: '65%',
+        animation: { duration: 800 },
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { font: { size: 10, family: 'Poppins', weight: '500' }, boxWidth: 10, padding: 8 }
+            }
+        }
     }
+});
 
-    if (data.monthly_savings > 0) {
-      const invest = data.monthly_savings * 12;
-      suggestions.push({
-        type: "success",
-        text: `Investing your savings in mutual funds (~12% return) could grow to <strong>Rs ${Math.round(invest * 1.12).toLocaleString()}</strong> in a year.`
-      });
+// 4. Top Expenses
+const sortedTop = [...result.current.expenses].sort((a,b) => b.amount - a.amount).slice(0, 6);
+new Chart(document.getElementById('billsChart'), {
+    type: 'bar',
+    data: {
+        labels: sortedTop.map(e => e.name),
+        datasets: [{
+            data: sortedTop.map(e => e.amount),
+            backgroundColor: '#1a4d4a',
+            borderRadius: 5,
+            barPercentage: 0.6
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        devicePixelRatio: 3,
+        animation: { duration: 800 },
+        plugins: { legend: { display: false } },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: '#f0f0f0', drawBorder: false },
+                ticks: { font: { size: 10, family: 'Poppins', weight: '500' }, color: '#888' }
+            },
+            x: {
+                grid: { display: false },
+                ticks: { font: { size: 9, family: 'Poppins', weight: '500' }, color: '#888' }
+            }
+        }
     }
-
-    if (suggestions.length > 0) {
-      const card = document.getElementById("suggestionsCard");
-      const list = document.getElementById("suggestionsList");
-      const iconMap = { danger: "🚨", warning: "⚠️", success: "✅", tip: "💡" };
-      card.style.display = "block";
-      list.innerHTML = suggestions.map(s => `
-        <li class="advice-item ${s.type}">
-          <div class="advice-icon">${iconMap[s.type]}</div>
-          <div class="advice-text">${s.text}</div>
-        </li>
-      `).join("");
-    }
-  }
+});
 </script>
 </body>
 </html>
